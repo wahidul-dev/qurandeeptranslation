@@ -1,0 +1,38 @@
+# Use an official Node runtime as a parent image
+FROM node:latest as build
+
+# Set the working directory in the container
+WORKDIR /app
+
+# Copy package.json and package-lock.json
+COPY package*.json ./
+
+# Install any dependencies
+RUN npm install
+
+# Install Tailwind CSS and its peer dependencies
+RUN npm install -D tailwindcss postcss autoprefixer
+
+# Initialize Tailwind CSS (this will create a tailwind.config.js file)
+RUN npx tailwindcss init
+
+# Copy the rest of your application's source code
+COPY . .
+
+# Build your application
+RUN npm run build
+
+# Use a smaller, production-ready Nginx image to serve the React app
+FROM nginx:alpine
+
+# Set environment variable for Chokidar polling
+ENV CHOKIDAR_USEPOLLING=true
+
+# Copy the build output to replace the default nginx contents.
+COPY --from=build /app/build /usr/share/nginx/html
+
+# Expose port 80 to the outside once the container has launched
+EXPOSE 80
+
+# Define the command to run your app using CMD which defines your runtime
+CMD ["nginx", "-g", "daemon off;"]
